@@ -5,7 +5,39 @@ import numpy as np
 import torch
 import torchaudio
 from torch import Tensor
-from torch.utils.data import BatchSampler, Dataset
+from torch.utils.data import BatchSampler, Dataset, DistributedSampler
+
+
+class DistributedBatchSampler(BatchSampler):
+    """`BatchSampler` wrapper that distributes across each batch multiple workers.
+    Note: The code is forked from PyTorch-NLP, you can find the license in
+        https://github.com/PetrochukM/PyTorch-NLP/blob/master/LICENSE
+    Args:
+        batch_sampler (torch.utils.data.sampler.BatchSampler)
+        num_replicas (int, optional): Number of processes participating in distributed training.
+        rank (int, optional): Rank of the current process within num_replicas.
+    Example:
+        >>> from torch.utils.data.sampler import BatchSampler
+        >>> from torch.utils.data.sampler import SequentialSampler
+        >>> sampler = SequentialSampler(list(range(12)))
+        >>> batch_sampler = BatchSampler(sampler, batch_size=4, drop_last=False)
+        >>>
+        >>> list(DistributedBatchSampler(batch_sampler, num_replicas=2, rank=0))
+        [[0, 2], [4, 6], [8, 10]]
+        >>> list(DistributedBatchSampler(batch_sampler, num_replicas=2, rank=1))
+        [[1, 3], [5, 7], [9, 11]]
+    """
+
+    def __init__(self, batch_sampler, **kwargs):
+        self.batch_sampler = batch_sampler
+        self.kwargs = kwargs
+
+    def __iter__(self):
+        for batch in self.batch_sampler:
+            yield list(DistributedSampler(batch, **self.kwargs))
+
+    def __len__(self):
+        return len(self.batch_sampler)
 
 
 class BucketizeBatchSampler(BatchSampler):
@@ -137,20 +169,20 @@ class HuBERTDataSet(Dataset):
     """Create a Dataset for HuBERT model training and fine-tuning.
 
     Args:
-        exp_dir (str or Path): The root directory of the ``.tsv`` file list.
+        root_dir (str or Path): The root directory that contains ``tsv`` and ``label`` directories.
         dataset (str): The dataset for training. Options: [``librispeech``, ``librilight``].
         subset (str): The subset of the dataset. Options: [``train``, ``valid``].
     """
 
     def __init__(
         self,
-        exp_dir: Union[str, Path],
+        root_dir: Union[str, Path],
         dataset: str,
         subset: str,
     ) -> None:
-        self.exp_dir = Path(exp_dir)
-        tsv_dir = self.exp_dir / "tsv"
-        label_dir = self.exp_dir / "label"
+        self.root_dir = Path(root_dir)
+        tsv_dir = self.root_dir / "tsv"
+        label_dir = self.root_dir / "label"
         f_list, ind_list, len_list = self._get_lists(tsv_dir, dataset, subset)
         self.f_list, self.ind_list, self.len_list = f_list, ind_list, len_list
         self.labels = self._load_labels(label_dir, dataset, subset)
