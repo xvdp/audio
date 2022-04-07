@@ -134,17 +134,27 @@ define_library(
 # libtorchaudio_decoder.so
 ################################################################################
 if (BUILD_CTC_DECODER)
+  set(FLASHLIGHT_TEXT_DIRECTORY "${PROJECT_SOURCE_DIR}/third_party/flashlight-text/submodule")
   set(
     LIBTORCHAUDIO_DECODER_SOURCES
-    decoder/src/decoder/LexiconDecoder.cpp
-    decoder/src/decoder/Trie.cpp
-    decoder/src/decoder/Utils.cpp
-    decoder/src/decoder/lm/KenLM.cpp
-    decoder/src/decoder/lm/ZeroLM.cpp
-    decoder/src/dictionary/Dictionary.cpp
-    decoder/src/dictionary/String.cpp
-    decoder/src/dictionary/System.cpp
-    decoder/src/dictionary/Utils.cpp
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Decoder.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/LexiconDecoder.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/LexiconDecoder.cpp
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Trie.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Trie.cpp
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Utils.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Utils.cpp
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/KenLM.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/KenLM.cpp
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/ZeroLM.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/ZeroLM.cpp
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/LM.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/dictionary/Dictionary.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/dictionary/Dictionary.cpp
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/dictionary/Utils.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/dictionary/Utils.cpp
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/String.h
+    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/String.cpp
     )
   set(
     LIBTORCHAUDIO_DECODER_DEFINITIONS
@@ -153,7 +163,7 @@ if (BUILD_CTC_DECODER)
   define_library(
     libtorchaudio_decoder
     "${LIBTORCHAUDIO_DECODER_SOURCES}"
-    "${PROJECT_SOURCE_DIR}"
+    "${PROJECT_SOURCE_DIR};${FLASHLIGHT_TEXT_DIRECTORY}"
     "torch;kenlm"
     "${LIBTORCHAUDIO_COMPILE_DEFINITIONS};${LIBTORCHAUDIO_DECODER_DEFINITIONS}"
     )

@@ -1,14 +1,12 @@
 #include <torch/extension.h>
 
-#include "torchaudio/csrc/decoder/src/decoder/LexiconDecoder.h"
-#include "torchaudio/csrc/decoder/src/decoder/lm/KenLM.h"
-#include "torchaudio/csrc/decoder/src/decoder/lm/ZeroLM.h"
-#include "torchaudio/csrc/decoder/src/dictionary/Dictionary.h"
-#include "torchaudio/csrc/decoder/src/dictionary/Utils.h"
+#include "third_party/flashlight-text/submodule/flashlight/lib/text/decoder/LexiconDecoder.h"
+#include "third_party/flashlight-text/submodule/flashlight/lib/text/decoder/lm/KenLM.h"
+#include "third_party/flashlight-text/submodule/flashlight/lib/text/decoder/ZeroLM.h"
+#include "third_party/flashlight-text/submodule/flashlight/lib/text/dictionary/Dictionary.h"
+#include "third_party/flashlight-text/submodule/flashlight/lib/text/dictionary/Utils.h"
 
-namespace py = pybind11;
-using namespace torchaudio::lib::text;
-using namespace py::literals;
+using namespace pybind11::literals;
 
 /**
  * Some hackery that lets pybind11 handle shared_ptr<void> (for old LMStatePtr).
