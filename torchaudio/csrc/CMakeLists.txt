@@ -211,11 +211,11 @@ if (BUILD_TORCHAUDIO_PYTHON_EXTENSION)
     find_package(Python3 ${PYTHON_VERSION} EXACT COMPONENTS Development)
     set(ADDITIONAL_ITEMS Python3::Python)
   endif()
-  function(define_extension name sources libraries definitions)
+  function(define_extension name include_dirs sources libraries definitions)
     add_library(${name} SHARED ${sources})
     target_compile_definitions(${name} PRIVATE "${definitions}")
     target_include_directories(
-      ${name} PRIVATE ${PROJECT_SOURCE_DIR} ${Python_INCLUDE_DIR})
+      ${name} PRIVATE ${PROJECT_SOURCE_DIR} ${Python_INCLUDE_DIR} ${include_dirs})
     target_link_libraries(
       ${name}
       ${libraries}
@@ -260,6 +260,7 @@ if (BUILD_TORCHAUDIO_PYTHON_EXTENSION)
   #----------------------------------------------------------------------------#
   define_extension(
     _torchaudio
+    ""
     "${EXTENSION_SOURCES}"
     libtorchaudio
     "${LIBTORCHAUDIO_COMPILE_DEFINITIONS}"
@@ -271,8 +272,9 @@ if (BUILD_TORCHAUDIO_PYTHON_EXTENSION)
       )
     define_extension(
       _torchaudio_decoder
+      "${FLASHLIGHT_TEXT_DIRECTORY}"
       "${DECODER_EXTENSION_SOURCES}"
-      "libtorchaudio_decoder"
+      "libtorchaudio_decoder;kenlm"
       "${LIBTORCHAUDIO_DECODER_DEFINITIONS}"
       )
   endif()

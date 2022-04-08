@@ -1,10 +1,10 @@
 #include <torch/extension.h>
 
-#include "third_party/flashlight-text/submodule/flashlight/lib/text/decoder/LexiconDecoder.h"
-#include "third_party/flashlight-text/submodule/flashlight/lib/text/decoder/lm/KenLM.h"
-#include "third_party/flashlight-text/submodule/flashlight/lib/text/decoder/ZeroLM.h"
-#include "third_party/flashlight-text/submodule/flashlight/lib/text/dictionary/Dictionary.h"
-#include "third_party/flashlight-text/submodule/flashlight/lib/text/dictionary/Utils.h"
+#include <flashlight/lib/text/decoder/LexiconDecoder.h>
+#include <flashlight/lib/text/decoder/lm/KenLM.h>
+#include <flashlight/lib/text/decoder/lm/ZeroLM.h>
+#include <flashlight/lib/text/dictionary/Dictionary.h>
+#include <flashlight/lib/text/dictionary/Utils.h>
 
 using namespace pybind11::literals;
 
@@ -15,6 +15,11 @@ using namespace pybind11::literals;
  * and inside PYBIND11_MODULE
  *   py::class_<std::shared_ptr<void>>(m, "encapsulated_data");
  */
+
+// TODO: get rid of this.
+using namespace fl::lib::text;
+// TODO: Verify if this is the correct way.
+using ZeroLMPtr = std::shared_ptr<ZeroLM>;
 
 namespace {
 
@@ -28,7 +33,7 @@ namespace {
  * see https://github.com/pybind/pybind11/issues/1546 for workarounds.
  * This is low-pri since we assume most people can just build with KenLM.
  */
-class PyLM : public LM {
+  class PyLM : public LM {
   using LM::LM;
 
   // needed for pybind11 or else it won't compile
