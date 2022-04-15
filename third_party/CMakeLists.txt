@@ -18,7 +18,7 @@ if (BUILD_KALDI)
 endif()
 
 ################################################################################
-# KenLM
+# FlashLight Text
 ################################################################################
 if (BUILD_CTC_DECODER)
   add_subdirectory(zlib)
@@ -26,4 +26,5 @@ if (BUILD_CTC_DECODER)
   add_subdirectory(lzma)
   add_subdirectory(boost)
   add_subdirectory(kenlm)
+  add_subdirectory(flashlight-text)
 endif()

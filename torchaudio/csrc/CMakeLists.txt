@@ -129,46 +129,6 @@ define_library(
   "${LIBTORCHAUDIO_COMPILE_DEFINITIONS}"
   )
 
-
-################################################################################
-# libtorchaudio_decoder.so
-################################################################################
-if (BUILD_CTC_DECODER)
-  set(FLASHLIGHT_TEXT_DIRECTORY "${PROJECT_SOURCE_DIR}/third_party/flashlight-text/submodule")
-  set(
-    LIBTORCHAUDIO_DECODER_SOURCES
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Decoder.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/LexiconDecoder.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/LexiconDecoder.cpp
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Trie.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Trie.cpp
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Utils.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/Utils.cpp
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/KenLM.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/KenLM.cpp
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/ZeroLM.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/ZeroLM.cpp
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/decoder/lm/LM.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/dictionary/Dictionary.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/dictionary/Dictionary.cpp
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/dictionary/Utils.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/dictionary/Utils.cpp
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/String.h
-    ${FLASHLIGHT_TEXT_DIRECTORY}/flashlight/lib/text/String.cpp
-    )
-  set(
-    LIBTORCHAUDIO_DECODER_DEFINITIONS
-    BUILD_CTC_DECODER
-    )
-  define_library(
-    libtorchaudio_decoder
-    "${LIBTORCHAUDIO_DECODER_SOURCES}"
-    "${PROJECT_SOURCE_DIR};${FLASHLIGHT_TEXT_DIRECTORY}"
-    "torch;kenlm"
-    "${LIBTORCHAUDIO_COMPILE_DEFINITIONS};${LIBTORCHAUDIO_DECODER_DEFINITIONS}"
-    )
-endif()
-
 # TODO: Add libtorchaudio_decoder
 if (APPLE)
   set(TORCHAUDIO_LIBRARY libtorchaudio CACHE INTERNAL "")
@@ -274,8 +234,8 @@ if (BUILD_TORCHAUDIO_PYTHON_EXTENSION)
       _torchaudio_decoder
       "${FLASHLIGHT_TEXT_DIRECTORY}"
       "${DECODER_EXTENSION_SOURCES}"
-      "libtorchaudio_decoder;kenlm"
-      "${LIBTORCHAUDIO_DECODER_DEFINITIONS}"
+      "torch;flashlight_text"
+      "BUILD_CTC_DECODER;"
       )
   endif()
 endif()
