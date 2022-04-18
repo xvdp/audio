@@ -22,4 +22,4 @@ set(
 add_library(flashlight_text STATIC ${sources})
 target_include_directories(flashlight_text PUBLIC submodule)
 target_link_libraries(flashlight_text kenlm)
-target_compile_definitions(flashlight_text FL_TEXT_USE_KENLM)
+target_compile_definitions(flashlight_text PRIVATE FL_TEXT_USE_KENLM)
