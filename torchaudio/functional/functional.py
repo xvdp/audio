@@ -36,6 +36,7 @@ __all__ = [
     "resample",
     "edit_distance",
     "pitch_shift",
+    "_pitch_shift",
     "rnnt_loss",
     "psd",
     "mvdr_weights_souden",
@@ -1602,6 +1603,119 @@ def edit_distance(seq1: Sequence, seq2: Sequence) -> int:
     return int(dold[-1])
 
 
+def stretch_waveform(
+    waveform: Tensor,
+    rate: float,
+    n_fft: int = 512,
+    win_length: Optional[int] = None,
+    hop_length: Optional[int] = None,
+    window: Optional[Tensor] = None,
+) -> Tensor:
+    """
+    Stretches waveform without changing pitch
+
+    .. devices:: CPU CUDA
+
+    .. properties:: TorchScript
+
+    Args:
+        waveform (Tensor): The input waveform of shape `(..., time)`.
+        rate: (float) stretch scale
+        n_fft (int, optional): Size of FFT, creates ``n_fft // 2 + 1`` bins (Default: ``512``).
+        win_length (int or None, optional): Window size. If None, then ``n_fft`` is used. (Default: ``None``).
+        hop_length (int or None, optional): Length of hop between STFT windows. If None, then
+            ``win_length // 4`` is used (Default: ``None``).
+        window (Tensor or None, optional): Window tensor that is applied/multiplied to each frame/window.
+            If None, then ``torch.hann_window(win_length)`` is used (Default: ``None``).
+
+    Returns:
+        Tensor: The pitch-shifted audio waveform of shape `(..., time//rate)`.
+    """
+    # pack batch
+    shape = waveform.size()
+    waveform = waveform.reshape(-1, shape[-1])
+    hop_length = hop_length or n_fft//4
+
+    ori_len = shape[-1]
+    spec_f = torch.stft(
+        input=waveform,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        win_length=win_length,
+        window=window,
+        center=True,
+        pad_mode="reflect",
+        normalized=False,
+        onesided=True,
+        return_complex=True,
+    )
+
+    phase_advance = torch.linspace(0, math.pi * hop_length, spec_f.shape[-2], device=spec_f.device)[..., None]
+    spec_stretch = phase_vocoder(spec_f, rate, phase_advance)
+    len_stretch = int(round(ori_len / rate))
+    waveform_stretch = torch.istft(
+        spec_stretch, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window, length=len_stretch
+    )
+    return waveform_stretch
+
+
+def _pitch_shift(
+    waveform: Tensor,
+    sample_rate: int,
+    sample_rate_stretch: int,
+    kernel: Tensor,
+    width: int,
+    rate: float,
+    n_fft: int = 512,
+    win_length: Optional[int] = None,
+    hop_length: Optional[int] = None,
+    window: Optional[Tensor] = None,
+) -> Tensor:
+    """
+    Shift the pitch of a waveform by cached kernel defined in transforms.PitchShift 
+
+    .. devices:: CPU CUDA
+
+    .. properties:: TorchScript
+
+    Args:
+        waveform (Tensor): The input waveform of shape `(..., time)`.
+        sample_rate (int): Sample rate of `waveform`.
+        sample_rate_stretch (int): Intermediate sample rate `waveform`.
+        kernel (Tensor): pitch shift sample kernel
+        width: (int) 
+        rate: (float) shift alpha
+        n_fft (int, optional): Size of FFT, creates ``n_fft // 2 + 1`` bins (Default: ``512``).
+        win_length (int or None, optional): Window size. If None, then ``n_fft`` is used. (Default: ``None``).
+        hop_length (int or None, optional): Length of hop between STFT windows. If None, then
+            ``win_length // 4`` is used (Default: ``None``).
+        window (Tensor or None, optional): Window tensor that is applied/multiplied to each frame/window.
+            If None, then ``torch.hann_window(win_length)`` is used (Default: ``None``).
+
+
+    Returns:
+        Tensor: The pitch-shifted audio waveform of shape `(..., time)`.
+         self.orig_freq, self.new_freq, self.gcd, self.kernel, self.width
+    """
+    # pack batch
+    shape = waveform.size()
+    ori_len = shape[-1]
+
+    waveform_stretch = stretch_waveform(waveform, rate, n_fft, win_length, hop_length, window)
+
+    _gcd = math.gcd(int(sample_rate_stretch), int(sample_rate))
+    waveform_shift = _apply_sinc_resample_kernel(waveform_stretch, sample_rate_stretch, sample_rate, _gcd, kernel, width)
+    shift_len = waveform_shift.size()[-1]
+    if shift_len > ori_len:
+        waveform_shift = waveform_shift[..., :ori_len]
+    else:
+        waveform_shift = torch.nn.functional.pad(waveform_shift, [0, ori_len - shift_len])
+
+    # unpack batch
+    waveform_shift = waveform_shift.view(shape[:-1] + waveform_shift.shape[-1:])
+    return waveform_shift
+
+
 def pitch_shift(
     waveform: Tensor,
     sample_rate: int,
@@ -1635,37 +1749,13 @@ def pitch_shift(
     Returns:
         Tensor: The pitch-shifted audio waveform of shape `(..., time)`.
     """
-    if hop_length is None:
-        hop_length = n_fft // 4
-    if win_length is None:
-        win_length = n_fft
-    if window is None:
-        window = torch.hann_window(window_length=win_length, device=waveform.device)
-
     # pack batch
     shape = waveform.size()
-    waveform = waveform.reshape(-1, shape[-1])
-
     ori_len = shape[-1]
     rate = 2.0 ** (-float(n_steps) / bins_per_octave)
-    spec_f = torch.stft(
-        input=waveform,
-        n_fft=n_fft,
-        hop_length=hop_length,
-        win_length=win_length,
-        window=window,
-        center=True,
-        pad_mode="reflect",
-        normalized=False,
-        onesided=True,
-        return_complex=True,
-    )
-    phase_advance = torch.linspace(0, math.pi * hop_length, spec_f.shape[-2], device=spec_f.device)[..., None]
-    spec_stretch = phase_vocoder(spec_f, rate, phase_advance)
-    len_stretch = int(round(ori_len / rate))
-    waveform_stretch = torch.istft(
-        spec_stretch, n_fft=n_fft, hop_length=hop_length, win_length=win_length, window=window, length=len_stretch
-    )
+
+    waveform_stretch = stretch_waveform(waveform, rate, n_fft, win_length, hop_length, window)
+
     waveform_shift = resample(waveform_stretch, int(sample_rate / rate), sample_rate)
     shift_len = waveform_shift.size()[-1]
     if shift_len > ori_len:

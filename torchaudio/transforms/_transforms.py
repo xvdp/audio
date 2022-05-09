@@ -1558,6 +1558,26 @@ class PitchShift(torch.nn.Module):
         window = window_fn(self.win_length) if wkwargs is None else window_fn(self.win_length, **wkwargs)
         self.register_buffer("window", window)
 
+        # partial replication of Resample to cache kernel
+        self.rate = (2.0 ** (-float(self.n_steps) / self.bins_per_octave))
+        self.sample_rate_stretch = sample_rate // self.rate
+        _gcd = math.gcd(int(self.sample_rate_stretch), int(self.sample_rate))
+        _kernel_kwargs = {
+            'lowpass_filter_width': 6,
+            'rolloff': 0.99,
+            'resampling_method': 'sinc_interpolation',
+            'beta': None,
+            'dtype': None
+            }
+        if n_steps:
+            kernel, self.width = _get_sinc_resample_kernel(
+                self.sample_rate_stretch,
+                self.sample_rate,
+                _gcd,
+                **_kernel_kwargs
+                )
+            self.register_buffer("kernel", kernel)
+
     def forward(self, waveform: Tensor) -> Tensor:
         r"""
         Args:
@@ -1567,11 +1587,13 @@ class PitchShift(torch.nn.Module):
             Tensor: The pitch-shifted audio of shape `(..., time)`.
         """
 
-        return F.pitch_shift(
+        return F._pitch_shift(
             waveform,
             self.sample_rate,
-            self.n_steps,
-            self.bins_per_octave,
+            self.sample_rate_stretch,
+            self.kernel,
+            self.width,
+            self.rate,
             self.n_fft,
             self.win_length,
             self.hop_length,
